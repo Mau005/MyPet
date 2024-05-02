@@ -21,5 +21,6 @@ func NewRouter() *mux.Router {
 	s.Use(middleware.CommonMiddleware)  //content api json
 	s.Use(middleware.SessionMiddleware) // security
 	s.HandleFunc("/account/change_password", handlerAccount.ChangePassword).Methods("PUT")
+	s.HandleFunc("/account/delete/{id}", handlerAccount.DeleteAccount).Methods("DELETE")
 	return r
 }

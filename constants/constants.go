@@ -5,6 +5,7 @@ const (
 	ERROR_TOKEN              = "token validation error"
 	ERROR_GET_TOKEN          = "error searching for token"
 	ERROR_LEN_PASSWORD       = "password length too short"
+	ERROR_UNHAUTORIZED_TOKEN = "you have to log in to enter"
 	ERROR_UNHAUTORIZED       = "you do not have privileges to perform this action"
 )
 

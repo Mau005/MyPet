@@ -16,6 +16,17 @@ import (
 
 type ControllerAccount struct{}
 
+func (ca *ControllerAccount) DeletedAccount(idAccount uint) (err error) {
+	account, err := ca.getAccountID(idAccount)
+	if err != nil {
+		return
+	}
+	if err = db.DB.Delete(&account).Error; err != nil {
+		return
+	}
+	return
+}
+
 func (ca *ControllerAccount) SaveAccount(account models.Account) (models.Account, error) {
 	if err := db.DB.Save(&account).Error; err != nil {
 		return account, err
@@ -25,6 +36,13 @@ func (ca *ControllerAccount) SaveAccount(account models.Account) (models.Account
 
 func (ca *ControllerAccount) getAccountName(name string) (account models.Account, err error) {
 	if err = db.DB.Where("name = ?", name).First(&account).Error; err != nil {
+		return
+	}
+	return
+}
+
+func (ca *ControllerAccount) getAccountID(id uint) (account models.Account, err error) {
+	if err = db.DB.Where("id = ?", id).First(&account).Error; err != nil {
 		return
 	}
 	return
@@ -109,6 +127,7 @@ func (ca *ControllerAccount) NewClaim(account models.Account) *models.Claims {
 		AccountName:  account.Name,
 		AccountEmail: account.Email,
 		Access:       account.Access,
+		AccountID:    account.ID,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expirationTime.Unix(),
 		},

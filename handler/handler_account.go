@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/Mau005/MyPet/constants"
 	"github.com/Mau005/MyPet/controller"
 	"github.com/Mau005/MyPet/models"
+	"github.com/gorilla/mux"
 )
 
 type HandlerAccount struct{}
@@ -131,4 +133,46 @@ func (hl *HandlerAccount) ChangePassword(w http.ResponseWriter, r *http.Request)
 			Message: fmt.Sprintf("the user's password has been changed: %s", account.Name),
 		},
 	)
+}
+
+func (hc *HandlerAccount) DeleteAccount(w http.ResponseWriter, r *http.Request) {
+	var accountCtl controller.ControllerAccount
+	var exceptCtl controller.ControllerException
+
+	claim, err := accountCtl.GetSessionClaims(r)
+	if err != nil {
+		exceptCtl.NewException(w, "Module Delete Account", constants.ERROR_UNHAUTORIZED_TOKEN, http.StatusUnauthorized, nil)
+		return
+	}
+
+	args := mux.Vars(r)
+	idAccount, err := strconv.ParseUint(args["id"], 10, 64)
+	if err != nil {
+		exceptCtl.NewException(w, "Module Delete Account", err.Error(), http.StatusConflict, nil)
+		return
+	}
+
+	if !(idAccount == uint64(claim.AccountID)) {
+		if !(claim.Access >= constants.PRIVILEGES_ADMINISTRATOR) {
+			exceptCtl.NewException(w, "Module Delete Account", constants.ERROR_UNHAUTORIZED, http.StatusUnauthorized, nil)
+			return
+		}
+	}
+
+	err = accountCtl.DeletedAccount(uint(idAccount))
+	if err != nil {
+		exceptCtl.NewException(w, "Module Delete Account", constants.ERROR_UNHAUTORIZED, http.StatusUnauthorized, nil)
+		return
+	}
+
+	json.NewEncoder(w).Encode(
+		struct {
+			Status  int    `json:"Status"`
+			Message string `json:"Message"`
+		}{
+			Status:  http.StatusOK,
+			Message: fmt.Sprintf("The user with the ID %d has been deleted:", idAccount),
+		},
+	)
+
 }
