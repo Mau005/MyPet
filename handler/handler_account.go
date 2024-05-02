@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/Mau005/MyPet/constants"
 	"github.com/Mau005/MyPet/controller"
+	"github.com/Mau005/MyPet/models"
 )
 
 type HandlerAccount struct{}
@@ -20,13 +20,30 @@ func (hl *HandlerAccount) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h1 *HandlerAccount) CreateAccount(w http.ResponseWriter, r *http.Request) {
-	var exceptionCtl controller.ControllerException
+	exceptionCtl := controller.ControllerException{
+		ResponseWriter: w,
+	}
+	var accountCtl controller.ControllerAccount
 	name := r.FormValue("name")
+	email := r.FormValue("email")
 	password := r.FormValue("password")
 	passwordTwo := r.FormValue("passwordTwo")
 
-	if !(len(password) > constants.LEN_PASSWORD && password == passwordTwo && len(name) >= constants.LEN_ACCOUNT_NAME) {
-		except := exceptionCtl.NewException("Error", "Mensaje", http.StatusConflict, nil)
+	// check password account
+	if !(password == passwordTwo) {
+		except := exceptionCtl.NewException("Module Create Account", "error in password compare", http.StatusConflict, nil)
+		json.NewEncoder(w).Encode(except)
+		return
+	}
+
+	account, err := accountCtl.CreateAccount(models.Account{
+		Name:     name,
+		Password: password,
+		Email:    email,
+	})
+
+	if err != nil {
+		except := exceptionCtl.NewException("Module Create Account", err.Error(), http.StatusNotAcceptable, nil)
 		json.NewEncoder(w).Encode(except)
 		return
 	}
@@ -41,7 +58,7 @@ func (h1 *HandlerAccount) CreateAccount(w http.ResponseWriter, r *http.Request) 
 			Message string `json:"Message"`
 		}{
 			Status:  http.StatusAccepted,
-			Message: "Se ha creado la cuenta con exito!",
+			Message: fmt.Sprintf("Se ha creado la cuenta con exito! %s", account.Name),
 		},
 	)
 }
