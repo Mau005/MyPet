@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -8,18 +9,18 @@ import (
 )
 
 type ControllerException struct {
-	ResponseWriter http.ResponseWriter
 }
 
-func (ce *ControllerException) NewException(error, message string, status int, timeStamp *time.Time) (excep models.Exception) {
-	ce.ResponseWriter.WriteHeader(status)
-	excep.Error = error
+func (ce *ControllerException) NewException(w http.ResponseWriter, handlerError, message string, status int, timeStamp *time.Time) (err error) {
+	var excep models.Exception
+	w.WriteHeader(status)
+	excep.Error = handlerError
 	excep.Message = message
 	excep.Status = status
 	if timeStamp == nil {
 		excep.TimeStamp = time.Now()
-		return
+	} else {
+		excep.TimeStamp = *timeStamp
 	}
-	excep.TimeStamp = *timeStamp
-	return
+	return json.NewEncoder(w).Encode(excep)
 }
