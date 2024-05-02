@@ -16,21 +16,67 @@ import (
 
 type ControllerAccount struct{}
 
-func (ca *ControllerAccount) GetAccountName(name string) (account models.Account, err error) {
-	if err = db.DB.Where("name = ?", name).Find(&account).Error; err != nil {
+func (ca *ControllerAccount) SaveAccount(account models.Account) (models.Account, error) {
+	if err := db.DB.Save(&account).Error; err != nil {
+		return account, err
+	}
+	return account, nil
+}
+
+func (ca *ControllerAccount) getAccountName(name string) (account models.Account, err error) {
+	if err = db.DB.Where("name = ?", name).First(&account).Error; err != nil {
 		return
 	}
 	return
 }
 
-func (ca *ControllerAccount) GetAccountEmail(email string) (account models.Account, err error) {
-	if err = db.DB.Where("email = ?", email).Find(&account).Error; err != nil {
+func (ca *ControllerAccount) getAccountEmail(email string) (account models.Account, err error) {
+	if err = db.DB.Where("email = ?", email).First(&account).Error; err != nil {
 		return
 	}
 	return
 }
 
-func (ca *ControllerAccount) CreateAccount(account models.Account) (models.Account, error) {
+func (ca *ControllerAccount) GetAccount(content string) (account models.Account, err error) {
+	account, err = ca.getAccountName(content)
+	if err != nil {
+		account, err = ca.getAccountEmail(content)
+		return
+	}
+	return
+}
+
+func (ca *ControllerAccount) ChangePassword(name, passwordOld, password, passwordTwo string) (account models.Account, err error) {
+	account, err = ca.GetAccount(name)
+	if err != nil {
+		return
+	}
+
+	if !(len(passwordTwo) >= constants.LEN_PASSWORD) {
+		return account, errors.New(constants.ERROR_LEN_PASSWORD)
+	}
+
+	err = ca.CompareCryptPassword(account.Password, passwordOld)
+	if err != nil {
+		return
+	}
+
+	account.Password = ca.GenerateCryptPassword(password)
+
+	account, err = ca.SaveAccount(account)
+	if err != nil {
+		return
+	}
+
+	return
+}
+
+func (ca *ControllerAccount) CreateAccount(account models.Account, passwordTwo *string) (models.Account, error) {
+	if passwordTwo != nil {
+		if !(account.Password == *passwordTwo) {
+			return account, errors.New("error compare password")
+		}
+	}
 	if !(len(account.Name) >= constants.LEN_ACCOUNT_NAME) {
 		return account, errors.New("error len account name")
 	}
@@ -62,6 +108,7 @@ func (ca *ControllerAccount) NewClaim(account models.Account) *models.Claims {
 	return &models.Claims{
 		AccountName:  account.Name,
 		AccountEmail: account.Email,
+		Access:       account.Access,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expirationTime.Unix(),
 		},
@@ -111,7 +158,7 @@ func (ca *ControllerAccount) GetSessionClaims(r *http.Request) (*models.Claims, 
 
 	token, ok := session.Values["token"].(string)
 	if !ok {
-		return claims, errors.New("token error")
+		return claims, errors.New(constants.ERROR_GET_TOKEN)
 	}
 	tokenKey := []byte(configuration.Security)
 	tokenParser := jwt.Parser{}
@@ -120,7 +167,7 @@ func (ca *ControllerAccount) GetSessionClaims(r *http.Request) (*models.Claims, 
 		return tokenKey, nil
 	})
 	if err != nil {
-		return claims, err
+		return claims, errors.New(constants.ERROR_TOKEN)
 	}
 	return claims, nil
 }
@@ -131,10 +178,31 @@ func (ca *ControllerAccount) GetSessionUser(r *http.Request) (models.Account, er
 		return models.Account{}, err
 	}
 
-	user, err := ca.GetAccountName(claims.AccountName)
+	user, err := ca.GetAccount(claims.AccountName)
 	if err != nil {
 		return user, err
 	}
 
 	return user, nil
+}
+
+func (ca *ControllerAccount) LoginAccount(name, password string) (account models.Account, token string, err error) {
+
+	account, err = ca.GetAccount(name)
+	if err != nil {
+		return
+	}
+
+	err = ca.CompareCryptPassword(account.Password, password)
+	if err != nil {
+		err = errors.New(constants.ERROR_ACCESS_CREDENTIALS)
+		return
+	}
+
+	token, err = ca.GenerateToken(account)
+	if err != nil {
+		return
+	}
+
+	return account, token, nil
 }
