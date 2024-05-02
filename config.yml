@@ -1,0 +1,13 @@
+DataBase:
+  Host: 127.0.0.1
+  Port: 3306
+  User: root
+  Password: 12345
+  NameDB: mypet
+  Engine: sqlite
+  SqlitePath: mypet.db
+Server:
+  Ip: "127.0.0.1"
+  Port: 8000
+  Debug: true
+  LengthSecurity: 128
